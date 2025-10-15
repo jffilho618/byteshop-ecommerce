@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ByteShop - E-commerce de produtos de tecnologia">
+    <title>ByteShop - Tecnologia que Transforma</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/landing.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header / Navbar -->
+    <header class="header">
+        <nav class="navbar container">
+            <div class="navbar-brand">
+                <h1 class="logo">ByteShop</h1>
+            </div>
+
+            <div class="navbar-search">
+                <input type="text" id="searchInput" placeholder="Buscar produtos..." class="search-input">
+                <button class="search-btn" id="searchBtn">
+                    <span>🔍</span>
+                </button>
+            </div>
+
+            <div class="navbar-actions">
+                <a href="pages/cart.html" class="nav-link cart-link">
+                    <span>🛒</span>
+                    <span class="cart-badge" id="cartBadge">0</span>
+                    <span>Carrinho</span>
+                </a>
+                <div class="auth-buttons">
+                    <a href="pages/login.html" class="btn btn-outline" id="loginBtn">Entrar</a>
+                    <a href="pages/register.html" class="btn btn-primary" id="registerBtn">Criar Conta</a>
+                </div>
+                <div class="user-menu" id="userMenu" style="display: none;">
+                    <button class="btn btn-text" id="userMenuBtn">
+                        <span id="userName">Usuário</span>
+                        <span>▼</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="pages/orders.html">Meus Pedidos</a>
+                        <a href="pages/admin.html" id="adminLink" style="display: none;">Dashboard Admin</a>
+                        <a href="#" id="logoutBtn">Sair</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2 class="hero-title">Tecnologia que Transforma</h2>
+                <p class="hero-subtitle">Os melhores produtos de tecnologia com os melhores preços</p>
+                <a href="#products" class="btn btn-primary btn-lg">Ver Produtos</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories -->
+    <section class="categories">
+        <div class="container">
+            <h2 class="section-title">Categorias</h2>
+            <div class="categories-grid">
+                <button class="category-card active" data-category="">
+                    <span class="category-icon">🔥</span>
+                    <span class="category-name">Todos</span>
+                </button>
+                <button class="category-card" data-category="laptops">
+                    <span class="category-icon">💻</span>
+                    <span class="category-name">Laptops</span>
+                </button>
+                <button class="category-card" data-category="smartphones">
+                    <span class="category-icon">📱</span>
+                    <span class="category-name">Smartphones</span>
+                </button>
+                <button class="category-card" data-category="tablets">
+                    <span class="category-icon">📲</span>
+                    <span class="category-name">Tablets</span>
+                </button>
+                <button class="category-card" data-category="accessories">
+                    <span class="category-icon">🎧</span>
+                    <span class="category-name">Acessórios</span>
+                </button>
+                <button class="category-card" data-category="components">
+                    <span class="category-icon">🔧</span>
+                    <span class="category-name">Componentes</span>
+                </button>
+                <button class="category-card" data-category="peripherals">
+                    <span class="category-icon">⌨️</span>
+                    <span class="category-name">Periféricos</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters">
+        <div class="container">
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label for="sortBy">Ordenar por:</label>
+                    <select id="sortBy" class="filter-select">
+                        <option value="newest">Mais Recentes</option>
+                        <option value="price-asc">Menor Preço</option>
+                        <option value="price-desc">Maior Preço</option>
+                        <option value="name">Nome A-Z</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="priceRange">Faixa de Preço:</label>
+                    <input type="number" id="minPrice" placeholder="Mín" class="filter-input">
+                    <span>-</span>
+                    <input type="number" id="maxPrice" placeholder="Máx" class="filter-input">
+                </div>
+
+                <div class="filter-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="inStockOnly">
+                        <span>Apenas em Estoque</span>
+                    </label>
+                </div>
+
+                <button class="btn btn-outline" id="clearFilters">Limpar Filtros</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products -->
+    <section class="products" id="products">
+        <div class="container">
+            <h2 class="section-title">Produtos em Destaque</h2>
+
+            <!-- Loading State -->
+            <div class="loading" id="productsLoading">
+                <div class="spinner"></div>
+                <p>Carregando produtos...</p>
+            </div>
+
+            <!-- Products Grid -->
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="productsEmpty" style="display: none;">
+                <p>Nenhum produto encontrado.</p>
+                <button class="btn btn-primary" id="resetSearch">Ver Todos os Produtos</button>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination" style="display: none;">
+                <button class="btn btn-outline" id="prevPage" disabled>Anterior</button>
+                <span class="page-info" id="pageInfo">Página 1 de 1</span>
+                <button class="btn btn-outline" id="nextPage" disabled>Próxima</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>ByteShop</h3>
+                    <p>E-commerce de produtos de tecnologia</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Links Úteis</h4>
+                    <ul>
+                        <li><a href="#products">Produtos</a></li>
+                        <li><a href="pages/cart.html">Carrinho</a></li>
+                        <li><a href="pages/orders.html">Meus Pedidos</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Contato</h4>
+                    <p>contato@byteshop.com</p>
+                    <p>(11) 9999-9999</p>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2024 ByteShop. Desenvolvido com Supabase.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script type="module" src="js/config/supabase.js"></script>
+    <script type="module" src="js/utils/auth.js"></script>
+    <script type="module" src="js/utils/api.js"></script>
+    <script type="module" src="js/components/navbar.js"></script>
+    <script type="module" src="js/pages/landing.js"></script>
+</body>
+</html>

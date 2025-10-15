@@ -47,6 +47,11 @@ export const VIEWS = {
   PRODUCT_INVENTORY: 'product_inventory_view',
   ORDER_DETAILS: 'order_details_view',
   USER_ORDER_HISTORY: 'user_order_history_view',
+  CART_WITH_PRODUCTS: 'cart_with_products_view',
+  SALES_DASHBOARD: 'sales_dashboard_view',
+  CATEGORY_SUMMARY: 'category_summary_view',
+  LOW_STOCK_PRODUCTS: 'low_stock_products_view',
+  PRODUCTS_WITH_IMAGES: 'products_with_images_view',
 } as const;
 
 // Functions do banco de dados
