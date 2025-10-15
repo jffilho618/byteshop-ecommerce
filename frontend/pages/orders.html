@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meus Pedidos - ByteShop</title>
+    <link rel="stylesheet" href="../css/reset.css" />
+    <link rel="stylesheet" href="../css/variables.css" />
+    <link rel="stylesheet" href="../css/global.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/orders.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <header class="header">
+      <nav class="navbar container">
+        <div class="navbar-brand">
+          <a href="../index.html">
+            <h1 class="logo">ByteShop</h1>
+          </a>
+        </div>
+        <div class="navbar-actions">
+          <a href="./cart.html" class="cart-link">
+            <span>🛒</span>
+            <span class="cart-badge" id="cartBadge">0</span>
+          </a>
+          <button id="userMenuBtn" class="btn-secondary">
+            <span id="userName"></span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <div class="orders-header">
+          <h1>Meus Pedidos</h1>
+          <a href="../index.html" class="btn-text">← Voltar para Loja</a>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading-state">
+          <div class="spinner"></div>
+          <p>Carregando pedidos...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none">
+          <div class="empty-icon">📦</div>
+          <h2>Nenhum pedido encontrado</h2>
+          <p>Você ainda não realizou nenhum pedido.</p>
+          <a href="../index.html" class="btn-primary">Começar a Comprar</a>
+        </div>
+
+        <!-- Orders List -->
+        <div id="ordersList" class="orders-list" style="display: none">
+          <!-- Orders will be rendered here -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="modal" style="display: none">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-content order-modal">
+        <div class="modal-header">
+          <h2>Detalhes do Pedido</h2>
+          <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+
+        <div class="modal-body" id="orderDetails">
+          <!-- Order details will be rendered here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script type="module" src="../js/pages/orders.js"></script>
+  </body>
+</html>
