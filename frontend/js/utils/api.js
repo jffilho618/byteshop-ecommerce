@@ -88,16 +88,24 @@ export async function getProductById(id) {
 
 export async function getCart() {
   try {
+    // Buscar itens do carrinho com produtos relacionados
     const { data, error } = await supabase
-      .from(VIEWS.CART_WITH_PRODUCTS)
-      .select('*')
+      .from(TABLES.CART_ITEMS)
+      .select(`
+        *,
+        product:products(*)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
+    // Processar para incluir image URLs
     return data.map(item => ({
       ...item,
-      image_url: getProductImageUrl(item.image_url),
+      product: {
+        ...item.product,
+        image_url: getProductImageUrl(item.product.image_url),
+      },
     }));
   } catch (error) {
     console.error('Get cart error:', error);
@@ -151,6 +159,7 @@ export async function addToCart(productId, quantity = 1) {
       const { data, error } = await supabase
         .from(TABLES.CART_ITEMS)
         .insert({
+          user_id: session.session.user.id,
           product_id: productId,
           quantity,
         })
@@ -225,13 +234,18 @@ export async function createOrder(shippingAddress, items) {
     const { data: session } = await supabase.auth.getSession();
     if (!session.session) throw new Error('Not authenticated');
 
+    // Calcular total do pedido
+    const totalAmount = items.reduce((sum, item) => {
+      return sum + (parseFloat(item.unit_price) * item.quantity);
+    }, 0);
+
     // Criar pedido
     const { data: order, error: orderError } = await supabase
       .from(TABLES.ORDERS)
       .insert({
         user_id: session.session.user.id,
         shipping_address: shippingAddress,
-        total_amount: 0, // Será calculado pelo trigger
+        total_amount: totalAmount,
         status: 'pending',
       })
       .select()
@@ -299,6 +313,47 @@ export async function getOrderById(orderId) {
     return data;
   } catch (error) {
     console.error('Get order error:', error);
+    throw error;
+  }
+}
+
+export async function getOrderDetails(orderId) {
+  try {
+    // Buscar pedido com itens
+    const { data: order, error: orderError } = await supabase
+      .from(TABLES.ORDERS)
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError) throw orderError;
+
+    // Buscar itens do pedido com produtos
+    const { data: items, error: itemsError } = await supabase
+      .from(TABLES.ORDER_ITEMS)
+      .select(`
+        *,
+        product:products(*)
+      `)
+      .eq('order_id', orderId);
+
+    if (itemsError) throw itemsError;
+
+    // Processar URLs das imagens
+    const processedItems = items.map(item => ({
+      ...item,
+      product: {
+        ...item.product,
+        image_url: getProductImageUrl(item.product.image_url),
+      },
+    }));
+
+    return {
+      ...order,
+      items: processedItems,
+    };
+  } catch (error) {
+    console.error('Get order details error:', error);
     throw error;
   }
 }

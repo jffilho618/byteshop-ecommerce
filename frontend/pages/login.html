@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - ByteShop</title>
+    <link rel="stylesheet" href="../css/reset.css" />
+    <link rel="stylesheet" href="../css/variables.css" />
+    <link rel="stylesheet" href="../css/global.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/auth.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <header class="header">
+      <nav class="navbar container">
+        <div class="navbar-brand">
+          <a href="../index.html">
+            <h1 class="logo">ByteShop</h1>
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <h1 id="authTitle">Entrar</h1>
+          <p id="authSubtitle">Acesse sua conta ByteShop</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="loginEmail">E-mail</label>
+            <input
+              type="email"
+              id="loginEmail"
+              name="email"
+              required
+              placeholder="seu@email.com"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Senha</label>
+            <input
+              type="password"
+              id="loginPassword"
+              name="password"
+              required
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button type="submit" class="btn-primary btn-block" id="loginBtn">
+            Entrar
+          </button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form" style="display: none">
+          <div class="form-group">
+            <label for="registerName">Nome Completo</label>
+            <input
+              type="text"
+              id="registerName"
+              name="fullName"
+              required
+              placeholder="Seu nome"
+              autocomplete="name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="registerEmail">E-mail</label>
+            <input
+              type="email"
+              id="registerEmail"
+              name="email"
+              required
+              placeholder="seu@email.com"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="registerPassword">Senha</label>
+            <input
+              type="password"
+              id="registerPassword"
+              name="password"
+              required
+              placeholder="••••••••"
+              minlength="6"
+              autocomplete="new-password"
+            />
+            <small>Mínimo de 6 caracteres</small>
+          </div>
+
+          <div class="form-group">
+            <label for="registerPasswordConfirm">Confirmar Senha</label>
+            <input
+              type="password"
+              id="registerPasswordConfirm"
+              name="passwordConfirm"
+              required
+              placeholder="••••••••"
+              minlength="6"
+              autocomplete="new-password"
+            />
+          </div>
+
+          <button type="submit" class="btn-primary btn-block" id="registerBtn">
+            Criar Conta
+          </button>
+        </form>
+
+        <!-- Toggle between Login/Register -->
+        <div class="auth-toggle">
+          <p id="toggleText">
+            Não tem uma conta?
+            <button type="button" id="toggleBtn" class="btn-text-inline">
+              Criar conta
+            </button>
+          </p>
+        </div>
+
+        <!-- Back to home -->
+        <div class="auth-back">
+          <a href="../index.html" class="btn-text">← Voltar para loja</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script type="module" src="../js/pages/login.js"></script>
+  </body>
+</html>

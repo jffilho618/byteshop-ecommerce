@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Checkout - ByteShop</title>
+    <link rel="stylesheet" href="../css/reset.css" />
+    <link rel="stylesheet" href="../css/variables.css" />
+    <link rel="stylesheet" href="../css/global.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/checkout.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <header class="header">
+      <nav class="navbar container">
+        <div class="navbar-brand">
+          <a href="../index.html">
+            <h1 class="logo">ByteShop</h1>
+          </a>
+        </div>
+        <div class="navbar-actions">
+          <button id="userMenuBtn" class="btn-secondary">
+            <span id="userName"></span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <div class="checkout-header">
+          <h1>Finalizar Compra</h1>
+          <a href="./cart.html" class="btn-text">← Voltar ao Carrinho</a>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading-state">
+          <div class="spinner"></div>
+          <p>Carregando...</p>
+        </div>
+
+        <!-- Checkout Content -->
+        <div id="checkoutContent" class="checkout-container" style="display: none">
+          <!-- Checkout Form -->
+          <div class="checkout-form">
+            <div class="form-section">
+              <h2>Endereço de Entrega</h2>
+
+              <form id="shippingForm">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="cep">CEP</label>
+                    <input
+                      type="text"
+                      id="cep"
+                      name="cep"
+                      required
+                      placeholder="00000-000"
+                      maxlength="9"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group form-group-lg">
+                    <label for="street">Rua</label>
+                    <input
+                      type="text"
+                      id="street"
+                      name="street"
+                      required
+                      placeholder="Nome da rua"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="number">Número</label>
+                    <input
+                      type="text"
+                      id="number"
+                      name="number"
+                      required
+                      placeholder="123"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="complement">Complemento</label>
+                    <input
+                      type="text"
+                      id="complement"
+                      name="complement"
+                      placeholder="Apto, bloco, etc"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="neighborhood">Bairro</label>
+                    <input
+                      type="text"
+                      id="neighborhood"
+                      name="neighborhood"
+                      required
+                      placeholder="Bairro"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group form-group-lg">
+                    <label for="city">Cidade</label>
+                    <input
+                      type="text"
+                      id="city"
+                      name="city"
+                      required
+                      placeholder="Cidade"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="state">Estado</label>
+                    <select id="state" name="state" required>
+                      <option value="">Selecione</option>
+                      <option value="AC">AC</option>
+                      <option value="AL">AL</option>
+                      <option value="AP">AP</option>
+                      <option value="AM">AM</option>
+                      <option value="BA">BA</option>
+                      <option value="CE">CE</option>
+                      <option value="DF">DF</option>
+                      <option value="ES">ES</option>
+                      <option value="GO">GO</option>
+                      <option value="MA">MA</option>
+                      <option value="MT">MT</option>
+                      <option value="MS">MS</option>
+                      <option value="MG">MG</option>
+                      <option value="PA">PA</option>
+                      <option value="PB">PB</option>
+                      <option value="PR">PR</option>
+                      <option value="PE">PE</option>
+                      <option value="PI">PI</option>
+                      <option value="RJ">RJ</option>
+                      <option value="RN">RN</option>
+                      <option value="RS">RS</option>
+                      <option value="RO">RO</option>
+                      <option value="RR">RR</option>
+                      <option value="SC">SC</option>
+                      <option value="SP">SP</option>
+                      <option value="SE">SE</option>
+                      <option value="TO">TO</option>
+                    </select>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Order Summary -->
+          <div class="order-summary">
+            <h2>Resumo do Pedido</h2>
+
+            <div class="order-items" id="orderItems">
+              <!-- Items will be rendered here -->
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span id="subtotal">R$ 0,00</span>
+            </div>
+
+            <div class="summary-row">
+              <span>Frete</span>
+              <span id="shipping">Grátis</span>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-row summary-total">
+              <span>Total</span>
+              <span id="total">R$ 0,00</span>
+            </div>
+
+            <button id="confirmOrderBtn" class="btn-primary btn-block">
+              Confirmar Pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal" style="display: none">
+      <div class="modal-content success-modal">
+        <div class="success-icon">✓</div>
+        <h2>Pedido Realizado!</h2>
+        <p>Seu pedido foi confirmado com sucesso.</p>
+        <p class="order-number">Pedido #<span id="orderNumber"></span></p>
+        <button id="viewOrderBtn" class="btn-primary">Ver Pedido</button>
+        <button id="continueShoppingBtn" class="btn-secondary">
+          Continuar Comprando
+        </button>
+      </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script type="module" src="../js/pages/checkout.js"></script>
+  </body>
+</html>

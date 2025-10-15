@@ -103,10 +103,43 @@ class Navbar {
 }
 
 // Inicializar navbar quando o DOM carregar
+let navbarInstance;
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new Navbar());
+  document.addEventListener('DOMContentLoaded', () => {
+    navbarInstance = new Navbar();
+  });
 } else {
-  new Navbar();
+  navbarInstance = new Navbar();
+}
+
+// Export função para atualizar badge do carrinho
+export async function updateCartBadge() {
+  if (navbarInstance) {
+    await navbarInstance.updateCartBadge();
+  } else {
+    // Se navbar não inicializada ainda, atualizar diretamente
+    const badge = document.getElementById('cartBadge');
+    if (badge) {
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          badge.textContent = '0';
+          badge.style.display = 'none';
+          return;
+        }
+
+        const summary = await getCartSummary();
+        const count = summary.total_items || 0;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'flex' : 'none';
+      } catch (error) {
+        console.error('Error updating cart badge:', error);
+        badge.textContent = '0';
+        badge.style.display = 'none';
+      }
+    }
+  }
 }
 
 console.log('✅ Navbar component loaded');

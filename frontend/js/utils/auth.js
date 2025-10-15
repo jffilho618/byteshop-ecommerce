@@ -10,34 +10,49 @@ const AUTH_KEY = 'byteshop_auth';
 /**
  * Registra um novo usuário
  */
-export async function register(email, password, fullName) {
+export async function register(data) {
   try {
+    const { email, password, full_name } = data;
+
     // 1. Criar usuário no Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: fullName,
+          full_name,
         },
       },
     });
 
     if (authError) throw authError;
 
-    // 2. Criar perfil do usuário
-    const { error: profileError } = await supabase
-      .from(TABLES.USERS)
-      .insert({
-        id: authData.user.id,
-        email,
-        full_name: fullName,
-        role: 'customer',
-      });
+    // 2. Criar perfil do usuário usando RPC (bypassa RLS)
+    const { error: profileError } = await supabase.rpc('create_user_profile', {
+      user_id: authData.user.id,
+      user_email: email,
+      user_full_name: full_name,
+      user_role: 'customer',
+    });
 
     if (profileError) throw profileError;
 
-    return { success: true, user: authData.user };
+    // 3. Buscar dados completos do usuário
+    const { data: userData } = await supabase
+      .from(TABLES.USERS)
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    // 4. Salvar no localStorage
+    if (userData && authData.session) {
+      localStorage.setItem(AUTH_KEY, JSON.stringify({
+        user: userData,
+        session: authData.session,
+      }));
+    }
+
+    return { success: true, user: userData, session: authData.session };
   } catch (error) {
     console.error('Registration error:', error);
     return { success: false, error: error.message };
@@ -105,11 +120,19 @@ export async function getCurrentUser() {
     }
 
     // Buscar dados completos
-    const { data: userData } = await supabase
+    const { data: userData, error: userError } = await supabase
       .from(TABLES.USERS)
       .select('*')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
+
+    if (userError) {
+      console.error('Error fetching user data:', userError);
+      // Se houver erro, logout
+      await supabase.auth.signOut();
+      localStorage.removeItem(AUTH_KEY);
+      return null;
+    }
 
     if (userData) {
       // Atualizar localStorage

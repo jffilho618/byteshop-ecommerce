@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Admin - ByteShop</title>
+    <link rel="stylesheet" href="../css/reset.css" />
+    <link rel="stylesheet" href="../css/variables.css" />
+    <link rel="stylesheet" href="../css/global.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/admin.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <header class="header">
+      <nav class="navbar container">
+        <div class="navbar-brand">
+          <h1 class="logo">ByteShop Admin</h1>
+        </div>
+        <div class="navbar-actions">
+          <a href="../index.html" class="btn-text">Ver Loja</a>
+          <button id="logoutBtn" class="btn-secondary">Sair</button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="admin-container">
+      <!-- Sidebar -->
+      <aside class="admin-sidebar">
+        <nav class="admin-nav">
+          <button class="admin-nav-item active" data-tab="products">
+            📦 Produtos
+          </button>
+          <button class="admin-nav-item" data-tab="orders">
+            🛒 Pedidos
+          </button>
+          <button class="admin-nav-item" data-tab="stats">
+            📊 Estatísticas
+          </button>
+        </nav>
+      </aside>
+
+      <!-- Content Area -->
+      <div class="admin-content">
+        <!-- Products Tab -->
+        <div id="productsTab" class="admin-tab active">
+          <div class="tab-header">
+            <h1>Gerenciar Produtos</h1>
+            <button id="addProductBtn" class="btn-primary">
+              + Adicionar Produto
+            </button>
+          </div>
+
+          <div id="productsLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando produtos...</p>
+          </div>
+
+          <div id="productsTable" class="data-table" style="display: none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Imagem</th>
+                  <th>Nome</th>
+                  <th>Categoria</th>
+                  <th>Preço</th>
+                  <th>Estoque</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="productsTableBody">
+                <!-- Products will be rendered here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div id="ordersTab" class="admin-tab">
+          <div class="tab-header">
+            <h1>Gerenciar Pedidos</h1>
+          </div>
+
+          <div id="ordersLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando pedidos...</p>
+          </div>
+
+          <div id="ordersTable" class="data-table" style="display: none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Data</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody">
+                <!-- Orders will be rendered here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div id="statsTab" class="admin-tab">
+          <div class="tab-header">
+            <h1>Estatísticas</h1>
+          </div>
+
+          <div id="statsLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando estatísticas...</p>
+          </div>
+
+          <div id="statsContent" style="display: none">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-value" id="totalProducts">0</div>
+                <div class="stat-label">Total de Produtos</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">🛒</div>
+                <div class="stat-value" id="totalOrders">0</div>
+                <div class="stat-label">Total de Pedidos</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-value" id="totalRevenue">R$ 0</div>
+                <div class="stat-label">Receita Total</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-value" id="lowStockCount">0</div>
+                <div class="stat-label">Estoque Baixo</div>
+              </div>
+            </div>
+
+            <div class="stats-section">
+              <h2>Produtos com Estoque Baixo</h2>
+              <div id="lowStockProducts" class="low-stock-list">
+                <!-- Low stock products will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Product Modal -->
+    <div id="productModal" class="modal" style="display: none">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content product-modal">
+        <div class="modal-header">
+          <h2 id="productModalTitle">Adicionar Produto</h2>
+          <button class="modal-close" id="closeProductModal">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <form id="productForm">
+            <input type="hidden" id="productId" />
+
+            <div class="form-row">
+              <div class="form-group form-group-full">
+                <label for="productName">Nome do Produto *</label>
+                <input type="text" id="productName" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="productCategory">Categoria *</label>
+                <select id="productCategory" required>
+                  <option value="">Selecione</option>
+                  <option value="laptops">Laptops</option>
+                  <option value="smartphones">Smartphones</option>
+                  <option value="tablets">Tablets</option>
+                  <option value="accessories">Acessórios</option>
+                  <option value="components">Componentes</option>
+                  <option value="peripherals">Periféricos</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="productPrice">Preço (R$) *</label>
+                <input type="number" id="productPrice" step="0.01" min="0" required />
+              </div>
+
+              <div class="form-group">
+                <label for="productStock">Estoque *</label>
+                <input type="number" id="productStock" min="0" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group form-group-full">
+                <label for="productImage">URL da Imagem</label>
+                <input type="url" id="productImage" placeholder="https://..." />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group form-group-full">
+                <label for="productDescription">Descrição *</label>
+                <textarea id="productDescription" rows="3" required></textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="cancelProductBtn">
+                Cancelar
+              </button>
+              <button type="submit" class="btn-primary" id="saveProductBtn">
+                Salvar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script type="module" src="../js/pages/admin.js"></script>
+  </body>
+</html>
