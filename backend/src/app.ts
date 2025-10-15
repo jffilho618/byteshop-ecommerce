@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { env, isDevelopment } from './config/env';
 import { errorHandler, notFoundHandler } from './middlewares';
+import routes from './routes';
 
 // Criar aplicação Express
 const app: Application = express();
@@ -35,7 +36,7 @@ if (isDevelopment) {
 // ============================================
 // HEALTH CHECK
 // ============================================
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -46,11 +47,7 @@ app.get('/health', (req, res) => {
 // ============================================
 // ROTAS DA API
 // ============================================
-// TODO: Adicionar rotas quando forem criadas
-// app.use('/api/auth', authRoutes);
-// app.use('/api/products', productRoutes);
-// app.use('/api/orders', orderRoutes);
-// app.use('/api/cart', cartRoutes);
+app.use('/api', routes);
 
 // ============================================
 // ERROR HANDLERS
