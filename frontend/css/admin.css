@@ -199,6 +199,28 @@
   color: white;
 }
 
+/* Status Select */
+.status-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  background: white;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.status-select:hover {
+  border-color: var(--primary-color);
+}
+
+.status-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 /* Stats Grid */
 .stats-grid {
   display: grid;
