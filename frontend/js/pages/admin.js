@@ -9,6 +9,13 @@ import {
   renderStatusBadge,
   updateStatusBadge,
 } from '../utils/order-status.js';
+import {
+  uploadProductImage,
+  updateProductImage,
+  deleteProductImage,
+  createImagePreview,
+  getProductImageUrl,
+} from '../utils/storage.js';
 
 class AdminDashboard {
   constructor() {
@@ -78,11 +85,55 @@ class AdminDashboard {
       productForm.addEventListener('submit', (e) => this.handleProductSubmit(e));
     }
 
+    // Image upload handlers
+    this.attachImageUploadListeners();
+
     // Modal backdrop
     const modalBackdrops = document.querySelectorAll('.modal-backdrop');
     modalBackdrops.forEach((backdrop) => {
       backdrop.addEventListener('click', () => this.closeProductModal());
     });
+  }
+
+  attachImageUploadListeners() {
+    const selectImageBtn = document.getElementById('selectImageBtn');
+    const productImageFile = document.getElementById('productImageFile');
+    const removeImageBtn = document.getElementById('removeImageBtn');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+
+    if (selectImageBtn && productImageFile) {
+      selectImageBtn.addEventListener('click', () => {
+        productImageFile.click();
+      });
+
+      productImageFile.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          try {
+            await createImagePreview(file, 'imagePreview');
+
+            const imageFileName = document.getElementById('imageFileName');
+            if (imageFileName) {
+              imageFileName.textContent = file.name;
+            }
+
+            if (imagePreviewContainer) {
+              imagePreviewContainer.style.display = 'block';
+            }
+          } catch (error) {
+            console.error('Preview error:', error);
+            this.showNotification('Erro ao carregar preview da imagem', 'error');
+          }
+        }
+      });
+    }
+
+    if (removeImageBtn && imagePreviewContainer) {
+      removeImageBtn.addEventListener('click', () => {
+        if (productImageFile) productImageFile.value = '';
+        imagePreviewContainer.style.display = 'none';
+      });
+    }
   }
 
   switchTab(tab) {
@@ -360,6 +411,10 @@ class AdminDashboard {
     const modal = document.getElementById('productModal');
     const title = document.getElementById('productModalTitle');
     const form = document.getElementById('productForm');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageFileName = document.getElementById('imageFileName');
+    const productImageFile = document.getElementById('productImageFile');
 
     if (product) {
       title.textContent = 'Editar Produto';
@@ -368,11 +423,21 @@ class AdminDashboard {
       document.getElementById('productCategory').value = product.category;
       document.getElementById('productPrice').value = product.price;
       document.getElementById('productStock').value = product.stock_quantity;
-      document.getElementById('productImage').value = product.image_url || '';
       document.getElementById('productDescription').value = product.description;
+
+      // Mostrar imagem atual se existir
+      if (product.image_url) {
+        imagePreview.src = getProductImageUrl(product.image_url);
+        imageFileName.textContent = 'Imagem atual';
+        imagePreviewContainer.style.display = 'block';
+      } else {
+        imagePreviewContainer.style.display = 'none';
+      }
     } else {
       title.textContent = 'Adicionar Produto';
       form.reset();
+      imagePreviewContainer.style.display = 'none';
+      if (productImageFile) productImageFile.value = '';
     }
 
     modal.style.display = 'flex';
@@ -381,29 +446,80 @@ class AdminDashboard {
   closeProductModal() {
     const modal = document.getElementById('productModal');
     const form = document.getElementById('productForm');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const productImageFile = document.getElementById('productImageFile');
 
     modal.style.display = 'none';
     form.reset();
+
+    if (imagePreviewContainer) {
+      imagePreviewContainer.style.display = 'none';
+    }
+
+    if (productImageFile) {
+      productImageFile.value = '';
+    }
+
     this.editingProductId = null;
   }
 
   async handleProductSubmit(e) {
     e.preventDefault();
 
+    const productImageFile = document.getElementById('productImageFile');
+    const saveBtn = document.getElementById('saveProductBtn');
+
+    // Dados básicos do produto
     const productData = {
       name: document.getElementById('productName').value.trim(),
       category: document.getElementById('productCategory').value,
       price: parseFloat(document.getElementById('productPrice').value),
       stock_quantity: parseInt(document.getElementById('productStock').value),
-      image_url: document.getElementById('productImage').value.trim() || null,
       description: document.getElementById('productDescription').value.trim(),
     };
-
-    const saveBtn = document.getElementById('saveProductBtn');
 
     try {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Salvando...';
+
+      let imageUrl = null;
+      const selectedFile = productImageFile.files[0];
+
+      // Upload de imagem se arquivo foi selecionado
+      if (selectedFile) {
+        console.log('📤 Fazendo upload da imagem...');
+
+        if (this.editingProductId) {
+          // Editando: buscar imagem antiga para deletar
+          const existingProduct = this.products.find((p) => p.id === this.editingProductId);
+          const oldImagePath = existingProduct?.image_url;
+
+          const uploadResult = await updateProductImage(
+            selectedFile,
+            productData.category,
+            productData.name,
+            oldImagePath
+          );
+          imageUrl = uploadResult.url;
+        } else {
+          // Novo produto: upload simples
+          const uploadResult = await uploadProductImage(
+            selectedFile,
+            productData.category,
+            productData.name
+          );
+          imageUrl = uploadResult.url;
+        }
+
+        console.log('✅ Upload concluído:', imageUrl);
+      } else if (this.editingProductId) {
+        // Editando sem nova imagem: manter a atual
+        const existingProduct = this.products.find((p) => p.id === this.editingProductId);
+        imageUrl = existingProduct?.image_url || null;
+      }
+
+      // Adicionar URL da imagem aos dados
+      productData.image_url = imageUrl;
 
       if (this.editingProductId) {
         // Update
@@ -417,6 +533,10 @@ class AdminDashboard {
         this.showNotification('Produto atualizado com sucesso!', 'success');
       } else {
         // Create
+        if (!imageUrl) {
+          throw new Error('Imagem é obrigatória para novos produtos');
+        }
+
         const { error } = await supabase.from(TABLES.PRODUCTS).insert([productData]);
 
         if (error) throw error;
@@ -427,8 +547,16 @@ class AdminDashboard {
       this.closeProductModal();
       await this.loadProducts();
     } catch (error) {
-      console.error('Error saving product:', error);
-      this.showNotification('Erro ao salvar produto', 'error');
+      console.error('Product submit error:', error);
+
+      let errorMessage = 'Erro ao salvar produto';
+      if (error.message.includes('upload')) {
+        errorMessage = 'Erro no upload da imagem';
+      } else if (error.message.includes('Imagem é obrigatória')) {
+        errorMessage = 'Selecione uma imagem para o produto';
+      }
+
+      this.showNotification(errorMessage, 'error');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Salvar';
@@ -445,7 +573,13 @@ class AdminDashboard {
     }
 
     try {
-      // Soft delete
+      // Deletar imagem do storage se existir
+      if (product.image_url) {
+        console.log('🗑️ Deletando imagem do produto...');
+        await deleteProductImage(product.image_url);
+      }
+
+      // Soft delete do produto
       const { error } = await supabase
         .from(TABLES.PRODUCTS)
         .update({ is_active: false })
