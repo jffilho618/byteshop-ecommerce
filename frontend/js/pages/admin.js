@@ -93,6 +93,9 @@ class AdminDashboard {
     modalBackdrops.forEach((backdrop) => {
       backdrop.addEventListener('click', () => this.closeProductModal());
     });
+
+    // Export CSV handlers
+    this.attachExportCsvListeners();
   }
 
   attachImageUploadListeners() {
@@ -733,6 +736,109 @@ class AdminDashboard {
     setTimeout(() => {
       notification.classList.remove('show');
     }, 3000);
+  }
+
+  /**
+   * Anexa event listeners para exportação CSV
+   */
+  attachExportCsvListeners() {
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const exportOptions = document.getElementById('exportOptions');
+    const confirmExportBtn = document.getElementById('confirmExportBtn');
+    const cancelExportBtn = document.getElementById('cancelExportBtn');
+
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener('click', () => {
+        if (exportOptions) {
+          const isVisible = exportOptions.style.display !== 'none';
+          exportOptions.style.display = isVisible ? 'none' : 'block';
+        }
+      });
+    }
+
+    if (cancelExportBtn && exportOptions) {
+      cancelExportBtn.addEventListener('click', () => {
+        exportOptions.style.display = 'none';
+      });
+    }
+
+    if (confirmExportBtn) {
+      confirmExportBtn.addEventListener('click', () => this.handleExportCsv());
+    }
+  }
+
+  /**
+   * Exporta pedidos para CSV via Edge Function
+   */
+  async handleExportCsv() {
+    const confirmExportBtn = document.getElementById('confirmExportBtn');
+    const originalText = confirmExportBtn.textContent;
+
+    try {
+      confirmExportBtn.disabled = true;
+      confirmExportBtn.textContent = 'Exportando...';
+
+      // Obter filtros
+      const status = document.getElementById('exportStatus').value;
+      const startDate = document.getElementById('exportStartDate').value;
+      const endDate = document.getElementById('exportEndDate').value;
+
+      // Construir URL com filtros
+      const params = new URLSearchParams();
+      if (status) params.append('status', status);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+
+      // Obter token de sessão
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Sessão não encontrada');
+      }
+
+      // Construir URL da Edge Function manualmente
+      const SUPABASE_URL = 'https://cliihgjajttoulpsrxzh.supabase.co';
+      const queryString = params.toString();
+      const functionUrl = `${SUPABASE_URL}/functions/v1/export-order-csv${queryString ? '?' + queryString : ''}`;
+
+      const response = await fetch(functionUrl, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao exportar pedidos');
+      }
+
+      // Download do arquivo CSV
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      this.showNotification('✅ Pedidos exportados com sucesso!', 'success');
+
+      // Fechar painel de exportação
+      const exportOptions = document.getElementById('exportOptions');
+      if (exportOptions) {
+        exportOptions.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      this.showNotification(`Erro ao exportar: ${error.message}`, 'error');
+    } finally {
+      confirmExportBtn.disabled = false;
+      confirmExportBtn.textContent = originalText;
+    }
   }
 }
 

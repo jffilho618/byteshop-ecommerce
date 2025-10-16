@@ -2,13 +2,9 @@
  * Checkout Page Logic
  */
 
+import { supabase } from '../config/supabase.js';
 import { getCurrentUser } from '../utils/auth.js';
-import {
-  getCart,
-  createOrder,
-  getAddresses,
-  createAddress
-} from '../utils/api.js';
+import { getCart, createOrder, getAddresses, createAddress } from '../utils/api.js';
 
 class CheckoutPage {
   constructor() {
@@ -31,7 +27,8 @@ class CheckoutPage {
     this.user = await getCurrentUser();
 
     if (!this.user) {
-      window.location.href = '/pages/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+      window.location.href =
+        '/pages/login.html?redirect=' + encodeURIComponent(window.location.pathname);
       return;
     }
 
@@ -50,7 +47,7 @@ class CheckoutPage {
 
     // Address mode toggle
     const addressModeRadios = document.querySelectorAll('input[name="addressMode"]');
-    addressModeRadios.forEach(radio => {
+    addressModeRadios.forEach((radio) => {
       radio.addEventListener('change', (e) => this.handleAddressModeChange(e.target.value));
     });
 
@@ -129,7 +126,7 @@ class CheckoutPage {
     // Renderizar opções
     savedAddressSelect.innerHTML = '<option value="">Selecione um endereço</option>';
 
-    this.addresses.forEach(address => {
+    this.addresses.forEach((address) => {
       const option = document.createElement('option');
       option.value = address.id;
       option.textContent = `${address.label} - ${address.street}, ${address.number}, ${address.city}/${address.state}`;
@@ -184,7 +181,7 @@ class CheckoutPage {
     const orderItems = document.getElementById('orderItems');
     if (!orderItems) return;
 
-    orderItems.innerHTML = this.cart.map(item => this.renderOrderItem(item)).join('');
+    orderItems.innerHTML = this.cart.map((item) => this.renderOrderItem(item)).join('');
 
     this.updateSummary();
   }
@@ -214,7 +211,7 @@ class CheckoutPage {
 
   updateSummary() {
     const subtotal = this.cart.reduce((sum, item) => {
-      return sum + (parseFloat(item.product.price) * item.quantity);
+      return sum + parseFloat(item.product.price) * item.quantity;
     }, 0);
 
     const shipping = 0; // Frete grátis
@@ -225,7 +222,8 @@ class CheckoutPage {
     const totalEl = document.getElementById('total');
 
     if (subtotalEl) subtotalEl.textContent = `R$ ${subtotal.toFixed(2)}`;
-    if (shippingEl) shippingEl.textContent = shipping === 0 ? 'Grátis' : `R$ ${shipping.toFixed(2)}`;
+    if (shippingEl)
+      shippingEl.textContent = shipping === 0 ? 'Grátis' : `R$ ${shipping.toFixed(2)}`;
     if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2)}`;
   }
 
@@ -303,14 +301,17 @@ class CheckoutPage {
       }
 
       // Preparar items do pedido
-      const items = this.cart.map(item => ({
+      const items = this.cart.map((item) => ({
         product_id: item.product_id,
         quantity: item.quantity,
-        unit_price: item.product.price
+        unit_price: item.product.price,
       }));
 
       // Criar pedido (addressId é obrigatório)
       const order = await createOrder(items, addressId);
+
+      // Enviar email de confirmação (não bloqueia o fluxo)
+      this.sendOrderConfirmationEmail(order.id);
 
       this.showSuccessModal(order.id);
     } catch (error) {
@@ -344,10 +345,7 @@ class CheckoutPage {
   }
 
   handleUserMenu() {
-    const options = [
-      'Ver Pedidos',
-      'Voltar à Loja'
-    ];
+    const options = ['Ver Pedidos', 'Voltar à Loja'];
 
     if (this.user.role === 'admin') {
       options.unshift('Dashboard Admin');
@@ -384,6 +382,28 @@ class CheckoutPage {
     setTimeout(() => {
       notification.classList.remove('show');
     }, 3000);
+  }
+
+  /**
+   * Envia email de confirmação de pedido via Edge Function
+   * @param {string} orderId - ID do pedido criado
+   */
+  async sendOrderConfirmationEmail(orderId) {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-order-confirmation', {
+        body: { order_id: orderId },
+      });
+
+      if (error) {
+        console.error('Failed to send confirmation email:', error);
+        // Não mostrar erro ao usuário, apenas logar
+      } else {
+        console.log('✅ Confirmation email sent successfully:', data);
+      }
+    } catch (error) {
+      console.error('Error invoking send-order-confirmation function:', error);
+      // Não bloqueia o fluxo do checkout
+    }
   }
 }
 

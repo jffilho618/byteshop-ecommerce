@@ -17,14 +17,16 @@ const config = {
   port: 5432,
   database: 'postgres',
   user: 'postgres',
-  password: 'bombalixo123',
+  password: 'xrZQjTaqWJq7LvLN',
   ssl: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false,
+  },
 };
 
 const BACKUP_DIR = path.join(__dirname, 'supabase', 'backups');
-const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
+const TIMESTAMP =
+  new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] +
+  '_' +
   new Date().toTimeString().split(' ')[0].replace(/:/g, '');
 const BACKUP_FILE = path.join(BACKUP_DIR, `backup_${TIMESTAMP}.sql`);
 
@@ -241,7 +243,7 @@ SET standard_conforming_strings = on;
     dumpContent += `-- ============================================\n\n`;
 
     // Habilitar RLS nas tabelas
-    const rlsTables = [...new Set(policies.rows.map(p => p.tablename))];
+    const rlsTables = [...new Set(policies.rows.map((p) => p.tablename))];
     for (const table of rlsTables) {
       dumpContent += `ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;\n`;
     }
@@ -303,7 +305,6 @@ SET standard_conforming_strings = on;
     console.log('📊 Tamanho:', sizeKB, 'KB');
     console.log('📁 Cópia:', latestFile);
     console.log('============================================\n');
-
   } catch (error) {
     console.error('\n❌ Erro:', error.message);
     process.exit(1);
