@@ -4,7 +4,18 @@
 
 import { supabase, TABLES } from '../config/supabase.js';
 import { getCurrentUser, logout } from '../utils/auth.js';
-import { showNotification } from '../utils/helpers.js';
+import {
+  ORDER_STATUS_LABELS,
+  renderStatusBadge,
+  updateStatusBadge,
+} from '../utils/order-status.js';
+import {
+  uploadProductImage,
+  updateProductImage,
+  deleteProductImage,
+  createImagePreview,
+  getProductImageUrl,
+} from '../utils/storage.js';
 
 class AdminDashboard {
   constructor() {
@@ -44,7 +55,7 @@ class AdminDashboard {
 
     // Tab navigation
     const navItems = document.querySelectorAll('.admin-nav-item');
-    navItems.forEach(item => {
+    navItems.forEach((item) => {
       item.addEventListener('click', (e) => {
         const tab = e.target.dataset.tab;
         this.switchTab(tab);
@@ -74,23 +85,67 @@ class AdminDashboard {
       productForm.addEventListener('submit', (e) => this.handleProductSubmit(e));
     }
 
+    // Image upload handlers
+    this.attachImageUploadListeners();
+
     // Modal backdrop
     const modalBackdrops = document.querySelectorAll('.modal-backdrop');
-    modalBackdrops.forEach(backdrop => {
+    modalBackdrops.forEach((backdrop) => {
       backdrop.addEventListener('click', () => this.closeProductModal());
     });
+  }
+
+  attachImageUploadListeners() {
+    const selectImageBtn = document.getElementById('selectImageBtn');
+    const productImageFile = document.getElementById('productImageFile');
+    const removeImageBtn = document.getElementById('removeImageBtn');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+
+    if (selectImageBtn && productImageFile) {
+      selectImageBtn.addEventListener('click', () => {
+        productImageFile.click();
+      });
+
+      productImageFile.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          try {
+            await createImagePreview(file, 'imagePreview');
+
+            const imageFileName = document.getElementById('imageFileName');
+            if (imageFileName) {
+              imageFileName.textContent = file.name;
+            }
+
+            if (imagePreviewContainer) {
+              imagePreviewContainer.style.display = 'block';
+            }
+          } catch (error) {
+            console.error('Preview error:', error);
+            this.showNotification('Erro ao carregar preview da imagem', 'error');
+          }
+        }
+      });
+    }
+
+    if (removeImageBtn && imagePreviewContainer) {
+      removeImageBtn.addEventListener('click', () => {
+        if (productImageFile) productImageFile.value = '';
+        imagePreviewContainer.style.display = 'none';
+      });
+    }
   }
 
   switchTab(tab) {
     this.currentTab = tab;
 
     // Update nav
-    document.querySelectorAll('.admin-nav-item').forEach(item => {
+    document.querySelectorAll('.admin-nav-item').forEach((item) => {
       item.classList.toggle('active', item.dataset.tab === tab);
     });
 
     // Update tabs
-    document.querySelectorAll('.admin-tab').forEach(tabEl => {
+    document.querySelectorAll('.admin-tab').forEach((tabEl) => {
       tabEl.classList.remove('active');
     });
     document.getElementById(`${tab}Tab`).classList.add('active');
@@ -132,10 +187,10 @@ class AdminDashboard {
     const tbody = document.getElementById('productsTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = this.products.map(product => this.renderProductRow(product)).join('');
+    tbody.innerHTML = this.products.map((product) => this.renderProductRow(product)).join('');
 
     // Attach action listeners
-    this.products.forEach(product => {
+    this.products.forEach((product) => {
       const editBtn = document.getElementById(`edit-${product.id}`);
       const deleteBtn = document.getElementById(`delete-${product.id}`);
       const toggleBtn = document.getElementById(`toggle-${product.id}`);
@@ -161,7 +216,7 @@ class AdminDashboard {
       tablets: 'Tablets',
       accessories: 'Acessórios',
       components: 'Componentes',
-      peripherals: 'Periféricos'
+      peripherals: 'Periféricos',
     };
 
     const stockStatus = product.stock_quantity < 10 ? 'low' : '';
@@ -211,17 +266,12 @@ class AdminDashboard {
       document.getElementById('ordersLoading').style.display = 'block';
       document.getElementById('ordersTable').style.display = 'none';
 
-      const { data, error } = await supabase
-        .from(TABLES.ORDERS)
-        .select(`
-          *,
-          user:users(full_name, email)
-        `)
-        .order('created_at', { ascending: false });
+      // Usar view admin_all_orders para ver TODOS os pedidos com info do cliente
+      const { data, error } = await supabase.from('admin_all_orders').select('*');
 
       if (error) throw error;
 
-      this.orders = data;
+      this.orders = data || [];
       this.renderOrders();
 
       document.getElementById('ordersLoading').style.display = 'none';
@@ -236,47 +286,49 @@ class AdminDashboard {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = this.orders.map(order => this.renderOrderRow(order)).join('');
+    if (this.orders.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" style="text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">Nenhum pedido encontrado</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = this.orders.map((order) => this.renderOrderRow(order)).join('');
 
     // Attach action listeners for status updates
-    this.orders.forEach(order => {
-      const select = document.getElementById(`status-${order.id}`);
+    this.orders.forEach((order) => {
+      const select = document.getElementById(`status-${order.order_id}`);
       if (select) {
-        select.addEventListener('change', (e) => this.updateOrderStatus(order.id, e.target.value));
+        select.addEventListener('change', (e) =>
+          this.updateOrderStatus(order.order_id, e.target.value)
+        );
       }
     });
   }
 
   renderOrderRow(order) {
-    const statusLabels = {
-      pending: 'Pendente',
-      processing: 'Processando',
-      shipped: 'Enviado',
-      delivered: 'Entregue',
-      cancelled: 'Cancelado'
-    };
-
-    const date = new Date(order.created_at);
+    const date = new Date(order.order_date);
     const formattedDate = date.toLocaleDateString('pt-BR');
 
     return `
-      <tr>
-        <td>#${order.id.substring(0, 8).toUpperCase()}</td>
-        <td>${order.user?.full_name || order.user?.email || 'N/A'}</td>
+      <tr id="order-row-${order.order_id}">
+        <td>#${order.order_id.substring(0, 8).toUpperCase()}</td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <strong>${order.customer_name}</strong>
+            <small style="color: var(--text-secondary);">${order.customer_email}</small>
+          </div>
+        </td>
         <td>${formattedDate}</td>
         <td>R$ ${parseFloat(order.total_amount).toFixed(2)}</td>
+        <td>${renderStatusBadge(order.status, order.order_id)}</td>
         <td>
-          <span class="status-badge ${order.status}">
-            ${statusLabels[order.status]}
-          </span>
-        </td>
-        <td>
-          <select id="status-${order.id}" class="status-select">
-            <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pendente</option>
-            <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processando</option>
-            <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Enviado</option>
-            <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Entregue</option>
-            <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+          <select id="status-${order.order_id}" class="status-select">
+            ${Object.entries(ORDER_STATUS_LABELS)
+              .map(
+                ([value, label]) =>
+                  `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`
+              )
+              .join('')}
           </select>
         </td>
       </tr>
@@ -304,7 +356,8 @@ class AdminDashboard {
         .select('total_amount')
         .not('status', 'eq', 'cancelled');
 
-      const totalRevenue = revenueData?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+      const totalRevenue =
+        revenueData?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
 
       // Low stock products
       const { data: lowStockData } = await supabase
@@ -335,16 +388,21 @@ class AdminDashboard {
     if (!container) return;
 
     if (products.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary);">Nenhum produto com estoque baixo.</p>';
+      container.innerHTML =
+        '<p style="color: var(--text-secondary);">Nenhum produto com estoque baixo.</p>';
       return;
     }
 
-    container.innerHTML = products.map(product => `
+    container.innerHTML = products
+      .map(
+        (product) => `
       <div class="low-stock-item">
         <span class="low-stock-item-name">${product.name}</span>
         <span class="low-stock-item-stock">${product.stock_quantity} unidades</span>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   }
 
   openProductModal(product = null) {
@@ -353,6 +411,10 @@ class AdminDashboard {
     const modal = document.getElementById('productModal');
     const title = document.getElementById('productModalTitle');
     const form = document.getElementById('productForm');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageFileName = document.getElementById('imageFileName');
+    const productImageFile = document.getElementById('productImageFile');
 
     if (product) {
       title.textContent = 'Editar Produto';
@@ -361,11 +423,21 @@ class AdminDashboard {
       document.getElementById('productCategory').value = product.category;
       document.getElementById('productPrice').value = product.price;
       document.getElementById('productStock').value = product.stock_quantity;
-      document.getElementById('productImage').value = product.image_url || '';
       document.getElementById('productDescription').value = product.description;
+
+      // Mostrar imagem atual se existir
+      if (product.image_url) {
+        imagePreview.src = getProductImageUrl(product.image_url);
+        imageFileName.textContent = 'Imagem atual';
+        imagePreviewContainer.style.display = 'block';
+      } else {
+        imagePreviewContainer.style.display = 'none';
+      }
     } else {
       title.textContent = 'Adicionar Produto';
       form.reset();
+      imagePreviewContainer.style.display = 'none';
+      if (productImageFile) productImageFile.value = '';
     }
 
     modal.style.display = 'flex';
@@ -374,29 +446,80 @@ class AdminDashboard {
   closeProductModal() {
     const modal = document.getElementById('productModal');
     const form = document.getElementById('productForm');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const productImageFile = document.getElementById('productImageFile');
 
     modal.style.display = 'none';
     form.reset();
+
+    if (imagePreviewContainer) {
+      imagePreviewContainer.style.display = 'none';
+    }
+
+    if (productImageFile) {
+      productImageFile.value = '';
+    }
+
     this.editingProductId = null;
   }
 
   async handleProductSubmit(e) {
     e.preventDefault();
 
+    const productImageFile = document.getElementById('productImageFile');
+    const saveBtn = document.getElementById('saveProductBtn');
+
+    // Dados básicos do produto
     const productData = {
       name: document.getElementById('productName').value.trim(),
       category: document.getElementById('productCategory').value,
       price: parseFloat(document.getElementById('productPrice').value),
       stock_quantity: parseInt(document.getElementById('productStock').value),
-      image_url: document.getElementById('productImage').value.trim() || null,
       description: document.getElementById('productDescription').value.trim(),
     };
-
-    const saveBtn = document.getElementById('saveProductBtn');
 
     try {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Salvando...';
+
+      let imageUrl = null;
+      const selectedFile = productImageFile.files[0];
+
+      // Upload de imagem se arquivo foi selecionado
+      if (selectedFile) {
+        console.log('📤 Fazendo upload da imagem...');
+
+        if (this.editingProductId) {
+          // Editando: buscar imagem antiga para deletar
+          const existingProduct = this.products.find((p) => p.id === this.editingProductId);
+          const oldImagePath = existingProduct?.image_url;
+
+          const uploadResult = await updateProductImage(
+            selectedFile,
+            productData.category,
+            productData.name,
+            oldImagePath
+          );
+          imageUrl = uploadResult.url;
+        } else {
+          // Novo produto: upload simples
+          const uploadResult = await uploadProductImage(
+            selectedFile,
+            productData.category,
+            productData.name
+          );
+          imageUrl = uploadResult.url;
+        }
+
+        console.log('✅ Upload concluído:', imageUrl);
+      } else if (this.editingProductId) {
+        // Editando sem nova imagem: manter a atual
+        const existingProduct = this.products.find((p) => p.id === this.editingProductId);
+        imageUrl = existingProduct?.image_url || null;
+      }
+
+      // Adicionar URL da imagem aos dados
+      productData.image_url = imageUrl;
 
       if (this.editingProductId) {
         // Update
@@ -410,9 +533,11 @@ class AdminDashboard {
         this.showNotification('Produto atualizado com sucesso!', 'success');
       } else {
         // Create
-        const { error } = await supabase
-          .from(TABLES.PRODUCTS)
-          .insert([productData]);
+        if (!imageUrl) {
+          throw new Error('Imagem é obrigatória para novos produtos');
+        }
+
+        const { error } = await supabase.from(TABLES.PRODUCTS).insert([productData]);
 
         if (error) throw error;
 
@@ -422,8 +547,16 @@ class AdminDashboard {
       this.closeProductModal();
       await this.loadProducts();
     } catch (error) {
-      console.error('Error saving product:', error);
-      this.showNotification('Erro ao salvar produto', 'error');
+      console.error('Product submit error:', error);
+
+      let errorMessage = 'Erro ao salvar produto';
+      if (error.message.includes('upload')) {
+        errorMessage = 'Erro no upload da imagem';
+      } else if (error.message.includes('Imagem é obrigatória')) {
+        errorMessage = 'Selecione uma imagem para o produto';
+      }
+
+      this.showNotification(errorMessage, 'error');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Salvar';
@@ -440,7 +573,13 @@ class AdminDashboard {
     }
 
     try {
-      // Soft delete
+      // Deletar imagem do storage se existir
+      if (product.image_url) {
+        console.log('🗑️ Deletando imagem do produto...');
+        await deleteProductImage(product.image_url);
+      }
+
+      // Soft delete do produto
       const { error } = await supabase
         .from(TABLES.PRODUCTS)
         .update({ is_active: false })
@@ -477,19 +616,110 @@ class AdminDashboard {
   }
 
   async updateOrderStatus(orderId, newStatus) {
+    console.log('🔄 [UPDATE STATUS] Iniciando:', { orderId, newStatus });
+
+    // Verificar sessão e admin
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    console.log('👤 [UPDATE STATUS] Usuário:', {
+      userId: session?.user?.id,
+      email: session?.user?.email,
+      role: this.user?.role,
+    });
+
+    // Testar is_admin()
+    const { data: isAdminResult, error: adminCheckError } = await supabase.rpc('is_admin');
+    console.log('🔑 [UPDATE STATUS] is_admin():', isAdminResult, adminCheckError);
+
+    // Verificar role diretamente na tabela users
+    const { data: userRole, error: roleError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session?.user?.id)
+      .single();
+    console.log('🎭 [UPDATE STATUS] Role direto da tabela:', userRole, roleError);
+
+    // Testar a query exata do RLS
+    const { data: rlsTest, error: rlsError } = await supabase.rpc('test_can_update_order', {
+      order_uuid: orderId,
+    });
+    console.log('🔬 [UPDATE STATUS] RLS Test:', rlsTest, rlsError);
+    console.log('🔬 [UPDATE STATUS] RLS Test DETALHADO:', JSON.stringify(rlsTest, null, 2));
+
+    const orderIndex = this.orders.findIndex((o) => o.order_id === orderId);
+    const previousStatus = orderIndex !== -1 ? this.orders[orderIndex].status : null;
+
+    console.log('📊 [UPDATE STATUS] Pedido:', {
+      orderIndex,
+      previousStatus,
+      orderUserId: orderIndex !== -1 ? this.orders[orderIndex].user_id : null,
+    });
+
     try {
-      const { error } = await supabase
+      console.log('💾 [UPDATE STATUS] Salvando no banco...');
+
+      // DEBUG: Verificar contexto de autenticação completo
+      const { data: session } = await supabase.auth.getSession();
+      console.log('🔐 [UPDATE STATUS] Sessão:', {
+        user: session?.session?.user?.id,
+        email: session?.session?.user?.email,
+        role: session?.session?.user?.user_metadata?.role,
+        aud: session?.session?.user?.aud,
+        jwt_exists: !!session?.session?.access_token,
+      });
+
+      // DEBUG: Testar função SQL no contexto do cliente
+      const { data: authTest } = await supabase.rpc('test_auth_context');
+      console.log('🧪 [UPDATE STATUS] Contexto SQL:', authTest);
+
+      const { data, error, count } = await supabase
         .from(TABLES.ORDERS)
-        .update({ status: newStatus })
-        .eq('id', orderId);
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderId)
+        .select();
 
-      if (error) throw error;
+      console.log('📦 [UPDATE STATUS] Resposta:', { data, error, count, dataLength: data?.length });
 
-      this.showNotification('Status do pedido atualizado!', 'success');
-      await this.loadOrders();
+      if (error) {
+        console.error('❌ [UPDATE STATUS] Erro Supabase:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn('⚠️ [UPDATE STATUS] NENHUMA LINHA ATUALIZADA - RLS BLOQUEOU!');
+
+        // Diagnóstico: tentar SELECT
+        const { data: canRead } = await supabase.from(TABLES.ORDERS).select('*').eq('id', orderId);
+        console.warn('🔍 [UPDATE STATUS] Consegue ler?', { canRead: !!canRead });
+
+        throw new Error('RLS bloqueou UPDATE - nenhuma linha atualizada');
+      }
+
+      console.log('✅ [UPDATE STATUS] Banco atualizado:', data);
+
+      updateStatusBadge(`badge-${orderId}`, newStatus);
+      console.log('🎨 [UPDATE STATUS] Badge atualizado');
+
+      if (orderIndex !== -1) {
+        this.orders[orderIndex].status = newStatus;
+      }
+
+      this.showNotification('Status atualizado!', 'success');
+      console.log('✅ [UPDATE STATUS] Concluído!');
     } catch (error) {
-      console.error('Error updating order status:', error);
-      this.showNotification('Erro ao atualizar status do pedido', 'error');
+      console.error('❌ [UPDATE STATUS] Erro:', error);
+      this.showNotification('Erro ao atualizar status', 'error');
+
+      const select = document.getElementById(`status-${orderId}`);
+      if (select && previousStatus) {
+        select.value = previousStatus;
+        updateStatusBadge(`badge-${orderId}`, previousStatus);
+        console.log('⏪ [UPDATE STATUS] Revertido');
+      }
     }
   }
 

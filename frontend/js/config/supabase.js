@@ -26,6 +26,7 @@ export const TABLES = {
   ORDERS: 'orders',
   ORDER_ITEMS: 'order_items',
   CART_ITEMS: 'cart_items',
+  ADDRESSES: 'addresses',
 };
 
 // Views

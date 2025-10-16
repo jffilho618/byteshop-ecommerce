@@ -229,10 +229,15 @@ export async function clearCart() {
  * ORDERS
  */
 
-export async function createOrder(shippingAddress, items) {
+export async function createOrder(items, addressId) {
   try {
     const { data: session } = await supabase.auth.getSession();
     if (!session.session) throw new Error('Not authenticated');
+
+    // Validar que addressId foi fornecido
+    if (!addressId) {
+      throw new Error('Address ID is required');
+    }
 
     // Calcular total do pedido
     const totalAmount = items.reduce((sum, item) => {
@@ -240,14 +245,16 @@ export async function createOrder(shippingAddress, items) {
     }, 0);
 
     // Criar pedido
+    const orderData = {
+      user_id: session.session.user.id,
+      address_id: addressId,
+      total_amount: totalAmount,
+      status: 'pending',
+    };
+
     const { data: order, error: orderError } = await supabase
       .from(TABLES.ORDERS)
-      .insert({
-        user_id: session.session.user.id,
-        shipping_address: shippingAddress,
-        total_amount: totalAmount,
-        status: 'pending',
-      })
+      .insert(orderData)
       .select()
       .single();
 
@@ -279,6 +286,17 @@ export async function createOrder(shippingAddress, items) {
       });
     }
 
+    // Limpar carrinho após pedido criado com sucesso
+    const { error: clearCartError } = await supabase
+      .from(TABLES.CART_ITEMS)
+      .delete()
+      .eq('user_id', session.session.user.id);
+
+    if (clearCartError) {
+      console.error('Error clearing cart:', clearCartError);
+      // Não lançar erro - pedido já foi criado com sucesso
+    }
+
     return order;
   } catch (error) {
     console.error('Create order error:', error);
@@ -288,6 +306,7 @@ export async function createOrder(shippingAddress, items) {
 
 export async function getUserOrders() {
   try {
+    // RLS garante que apenas pedidos do próprio usuário são retornados
     const { data, error } = await supabase
       .from(TABLES.ORDERS)
       .select('*')
@@ -297,6 +316,79 @@ export async function getUserOrders() {
     return data;
   } catch (error) {
     console.error('Get orders error:', error);
+    throw error;
+  }
+}
+
+export async function getAllOrdersAdmin() {
+  try {
+    // Apenas para admin - usa view que mostra todos os pedidos
+    const { data, error } = await supabase
+      .from('admin_all_orders')
+      .select('*');
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Get all orders (admin) error:', error);
+    throw error;
+  }
+}
+
+export async function getAdminOrderDetails(orderId) {
+  try {
+    // Busca detalhes de um pedido específico com informações do cliente
+    const { data, error } = await supabase
+      .from('admin_order_details')
+      .select('*')
+      .eq('order_id', orderId);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) return null;
+
+    // Agrupar itens com o pedido
+    const order = {
+      order_id: data[0].order_id,
+      user_id: data[0].user_id,
+      status: data[0].status,
+      total_amount: data[0].total_amount,
+      order_date: data[0].order_date,
+      customer_name: data[0].customer_name,
+      customer_email: data[0].customer_email,
+      delivery_address: data[0].delivery_address,
+      items: data.map(item => ({
+        item_id: item.item_id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+        product_name: item.product_name,
+        product_image: getProductImageUrl(item.product_image),
+        product_category: item.product_category,
+      }))
+    };
+
+    return order;
+  } catch (error) {
+    console.error('Get admin order details error:', error);
+    throw error;
+  }
+}
+
+export async function updateOrderStatus(orderId, newStatus) {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.ORDERS)
+      .update({ status: newStatus })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Update order status error:', error);
     throw error;
   }
 }
@@ -319,9 +411,9 @@ export async function getOrderById(orderId) {
 
 export async function getOrderDetails(orderId) {
   try {
-    // Buscar pedido com itens
+    // Buscar pedido com endereço formatado usando view
     const { data: order, error: orderError } = await supabase
-      .from(TABLES.ORDERS)
+      .from('orders_with_addresses')
       .select('*')
       .eq('id', orderId)
       .single();
@@ -350,12 +442,138 @@ export async function getOrderDetails(orderId) {
 
     return {
       ...order,
+      shipping_address: order.full_address, // Usar endereço formatado da view
       items: processedItems,
     };
   } catch (error) {
     console.error('Get order details error:', error);
     throw error;
   }
+}
+
+/**
+ * ADDRESSES
+ */
+
+export async function getAddresses() {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESSES)
+      .select('*')
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Get addresses error:', error);
+    throw error;
+  }
+}
+
+export async function getDefaultAddress() {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESSES)
+      .select('*')
+      .eq('is_default', true)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Get default address error:', error);
+    throw error;
+  }
+}
+
+export async function createAddress(addressData) {
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESSES)
+      .insert({
+        user_id: session.session.user.id,
+        ...addressData,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Create address error:', error);
+    throw error;
+  }
+}
+
+export async function updateAddress(addressId, addressData) {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESSES)
+      .update(addressData)
+      .eq('id', addressId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Update address error:', error);
+    throw error;
+  }
+}
+
+export async function deleteAddress(addressId) {
+  try {
+    const { error } = await supabase
+      .from(TABLES.ADDRESSES)
+      .delete()
+      .eq('id', addressId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Delete address error:', error);
+    throw error;
+  }
+}
+
+export async function setDefaultAddress(addressId) {
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) throw new Error('Not authenticated');
+
+    // O trigger ensure_single_default_address cuidará de desmarcar outros
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESSES)
+      .update({ is_default: true })
+      .eq('id', addressId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Set default address error:', error);
+    throw error;
+  }
+}
+
+export async function formatAddressFromData(address) {
+  if (!address) return '';
+
+  let formatted = `${address.street}, ${address.number}`;
+
+  if (address.complement) {
+    formatted += `, ${address.complement}`;
+  }
+
+  formatted += `, ${address.neighborhood}, ${address.city}/${address.state}, ${address.zipcode}`;
+
+  return formatted;
 }
 
 /**

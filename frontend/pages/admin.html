@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -29,15 +29,9 @@
       <!-- Sidebar -->
       <aside class="admin-sidebar">
         <nav class="admin-nav">
-          <button class="admin-nav-item active" data-tab="products">
-            📦 Produtos
-          </button>
-          <button class="admin-nav-item" data-tab="orders">
-            🛒 Pedidos
-          </button>
-          <button class="admin-nav-item" data-tab="stats">
-            📊 Estatísticas
-          </button>
+          <button class="admin-nav-item active" data-tab="products">📦 Produtos</button>
+          <button class="admin-nav-item" data-tab="orders">🛒 Pedidos</button>
+          <button class="admin-nav-item" data-tab="stats">📊 Estatísticas</button>
         </nav>
       </aside>
 
@@ -47,9 +41,7 @@
         <div id="productsTab" class="admin-tab active">
           <div class="tab-header">
             <h1>Gerenciar Produtos</h1>
-            <button id="addProductBtn" class="btn-primary">
-              + Adicionar Produto
-            </button>
+            <button id="addProductBtn" class="btn-primary">+ Adicionar Produto</button>
           </div>
 
           <div id="productsLoading" class="loading-state">
@@ -203,8 +195,57 @@
 
             <div class="form-row">
               <div class="form-group form-group-full">
-                <label for="productImage">URL da Imagem</label>
-                <input type="url" id="productImage" placeholder="https://..." />
+                <label for="productImageFile">Imagem do Produto *</label>
+                <div class="image-upload-container">
+                  <input
+                    type="file"
+                    id="productImageFile"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    style="display: none"
+                  />
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    id="selectImageBtn"
+                    style="width: 100%; margin-bottom: var(--spacing-sm)"
+                  >
+                    📁 Selecionar Imagem
+                  </button>
+                  <div id="imagePreviewContainer" style="display: none; text-align: center">
+                    <img
+                      id="imagePreview"
+                      style="
+                        max-width: 200px;
+                        max-height: 200px;
+                        border-radius: var(--radius-sm);
+                        margin-bottom: var(--spacing-sm);
+                      "
+                    />
+                    <div>
+                      <span
+                        id="imageFileName"
+                        style="font-size: var(--font-size-sm); color: var(--text-secondary)"
+                      ></span>
+                      <button
+                        type="button"
+                        id="removeImageBtn"
+                        class="btn-text"
+                        style="margin-left: var(--spacing-sm); color: var(--error-color)"
+                      >
+                        🗑️ Remover
+                      </button>
+                    </div>
+                  </div>
+                  <small
+                    style="
+                      color: var(--text-secondary);
+                      display: block;
+                      margin-top: var(--spacing-xs);
+                    "
+                  >
+                    Formatos aceitos: JPG, PNG, WebP • Tamanho máximo: 5MB
+                  </small>
+                </div>
               </div>
             </div>
 
@@ -216,12 +257,8 @@
             </div>
 
             <div class="modal-footer">
-              <button type="button" class="btn-secondary" id="cancelProductBtn">
-                Cancelar
-              </button>
-              <button type="submit" class="btn-primary" id="saveProductBtn">
-                Salvar
-              </button>
+              <button type="button" class="btn-secondary" id="cancelProductBtn">Cancelar</button>
+              <button type="submit" class="btn-primary" id="saveProductBtn">Salvar</button>
             </div>
           </form>
         </div>

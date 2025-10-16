@@ -48,20 +48,54 @@
             <div class="form-section">
               <h2>Endereço de Entrega</h2>
 
-              <form id="shippingForm">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="cep">CEP</label>
-                    <input
-                      type="text"
-                      id="cep"
-                      name="cep"
-                      required
-                      placeholder="00000-000"
-                      maxlength="9"
-                    />
-                  </div>
+              <!-- Address Mode Selection -->
+              <div class="address-mode-selector">
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    name="addressMode"
+                    id="addressModeSelect"
+                    value="select"
+                    checked
+                  />
+                  <span>Usar endereço salvo</span>
+                </label>
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    name="addressMode"
+                    id="addressModeNew"
+                    value="new"
+                  />
+                  <span>Inserir novo endereço</span>
+                </label>
+              </div>
+
+              <!-- Saved Address Selection -->
+              <div id="savedAddressSection" style="display: none; margin-bottom: var(--spacing-lg);">
+                <div class="form-group">
+                  <label for="savedAddressSelect">Selecione o Endereço</label>
+                  <select id="savedAddressSelect" class="form-select">
+                    <option value="">Carregando...</option>
+                  </select>
                 </div>
+              </div>
+
+              <!-- New Address Form -->
+              <form id="shippingForm">
+                <div id="newAddressSection" style="display: none;">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="cep">CEP *</label>
+                      <input
+                        type="text"
+                        id="cep"
+                        name="cep"
+                        placeholder="00000-000"
+                        maxlength="9"
+                      />
+                    </div>
+                  </div>
 
                 <div class="form-row">
                   <div class="form-group form-group-lg">
@@ -155,6 +189,23 @@
                       <option value="TO">TO</option>
                     </select>
                   </div>
+                </div>
+
+                <!-- Address Label (sempre salvar) -->
+                <div class="form-row" style="margin-top: var(--spacing-lg);">
+                  <div class="form-group form-group-full">
+                    <label for="addressLabel">Nome do Endereço</label>
+                    <input
+                      type="text"
+                      id="addressLabel"
+                      name="addressLabel"
+                      placeholder="Ex: Casa, Trabalho, Endereço Principal"
+                    />
+                    <small style="color: var(--text-secondary);">
+                      Este endereço será salvo automaticamente para uso em próximas compras
+                    </small>
+                  </div>
+                </div>
                 </div>
               </form>
             </div>

@@ -5,6 +5,7 @@
 import { getCurrentUser, logout } from '../utils/auth.js';
 import { getUserOrders, getOrderDetails } from '../utils/api.js';
 import { updateCartBadge } from '../components/navbar.js';
+import { renderStatusBadge } from '../utils/order-status.js';
 
 class OrdersPage {
   constructor() {
@@ -89,22 +90,6 @@ class OrdersPage {
   }
 
   renderOrderCard(order) {
-    const statusLabels = {
-      pending: 'Pendente',
-      processing: 'Processando',
-      shipped: 'Enviado',
-      delivered: 'Entregue',
-      cancelled: 'Cancelado'
-    };
-
-    const statusIcons = {
-      pending: '⏳',
-      processing: '📦',
-      shipped: '🚚',
-      delivered: '✓',
-      cancelled: '✗'
-    };
-
     const date = new Date(order.created_at);
     const formattedDate = date.toLocaleDateString('pt-BR');
     const formattedTime = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -119,9 +104,7 @@ class OrdersPage {
             <h3>Pedido #${order.id.substring(0, 8).toUpperCase()}</h3>
             <p>${formattedDate} às ${formattedTime}</p>
           </div>
-          <div class="order-status ${order.status}">
-            ${statusIcons[order.status]} ${statusLabels[order.status]}
-          </div>
+          ${renderStatusBadge(order.status)}
         </div>
 
         <div class="order-card-body">
@@ -162,14 +145,6 @@ class OrdersPage {
   }
 
   renderOrderDetails(order) {
-    const statusLabels = {
-      pending: 'Pendente',
-      processing: 'Processando',
-      shipped: 'Enviado',
-      delivered: 'Entregue',
-      cancelled: 'Cancelado'
-    };
-
     const date = new Date(order.created_at);
     const formattedDate = date.toLocaleDateString('pt-BR');
     const formattedTime = date.toLocaleTimeString('pt-BR');
@@ -189,9 +164,7 @@ class OrdersPage {
         </div>
         <div class="order-detail-row">
           <strong>Status:</strong>
-          <span class="order-status ${order.status}">
-            ${statusLabels[order.status]}
-          </span>
+          ${renderStatusBadge(order.status)}
         </div>
       </div>
 

@@ -3,18 +3,27 @@
  */
 
 import { getCurrentUser } from '../utils/auth.js';
-import { getCart, createOrder } from '../utils/api.js';
+import {
+  getCart,
+  createOrder,
+  getAddresses,
+  createAddress
+} from '../utils/api.js';
 
 class CheckoutPage {
   constructor() {
     this.cart = [];
     this.user = null;
+    this.addresses = [];
+    this.selectedAddressId = null;
+    this.addressMode = 'select'; // 'select' ou 'new'
     this.init();
   }
 
   async init() {
     await this.checkAuth();
     this.attachEventListeners();
+    await this.loadAddresses();
     await this.loadCart();
   }
 
@@ -37,6 +46,20 @@ class CheckoutPage {
     const userMenuBtn = document.getElementById('userMenuBtn');
     if (userMenuBtn) {
       userMenuBtn.addEventListener('click', () => this.handleUserMenu());
+    }
+
+    // Address mode toggle
+    const addressModeRadios = document.querySelectorAll('input[name="addressMode"]');
+    addressModeRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => this.handleAddressModeChange(e.target.value));
+    });
+
+    // Address selection
+    const addressSelect = document.getElementById('savedAddressSelect');
+    if (addressSelect) {
+      addressSelect.addEventListener('change', (e) => {
+        this.selectedAddressId = e.target.value;
+      });
     }
 
     // CEP auto-fill (usando ViaCEP API)
@@ -71,6 +94,67 @@ class CheckoutPage {
       continueShoppingBtn.addEventListener('click', () => {
         window.location.href = '/';
       });
+    }
+  }
+
+  async loadAddresses() {
+    try {
+      this.addresses = await getAddresses();
+      this.renderAddressSelector();
+    } catch (error) {
+      console.error('Error loading addresses:', error);
+      // Se falhar, continua com modo manual
+      this.addresses = [];
+    }
+  }
+
+  renderAddressSelector() {
+    const savedAddressSection = document.getElementById('savedAddressSection');
+    const savedAddressSelect = document.getElementById('savedAddressSelect');
+
+    if (!savedAddressSection || !savedAddressSelect) return;
+
+    if (this.addresses.length === 0) {
+      // Sem endereços salvos - forçar modo novo endereço
+      savedAddressSection.style.display = 'none';
+      const selectRadio = document.getElementById('addressModeSelect');
+      const newRadio = document.getElementById('addressModeNew');
+      if (selectRadio) selectRadio.disabled = true;
+      if (newRadio) newRadio.checked = true;
+      this.addressMode = 'new';
+      this.handleAddressModeChange('new');
+      return;
+    }
+
+    // Renderizar opções
+    savedAddressSelect.innerHTML = '<option value="">Selecione um endereço</option>';
+
+    this.addresses.forEach(address => {
+      const option = document.createElement('option');
+      option.value = address.id;
+      option.textContent = `${address.label} - ${address.street}, ${address.number}, ${address.city}/${address.state}`;
+      if (address.is_default) {
+        option.selected = true;
+        this.selectedAddressId = address.id;
+      }
+      savedAddressSelect.appendChild(option);
+    });
+
+    savedAddressSection.style.display = 'block';
+  }
+
+  handleAddressModeChange(mode) {
+    this.addressMode = mode;
+
+    const savedAddressSection = document.getElementById('savedAddressSection');
+    const newAddressSection = document.getElementById('newAddressSection');
+
+    if (mode === 'select') {
+      if (savedAddressSection) savedAddressSection.style.display = 'block';
+      if (newAddressSection) newAddressSection.style.display = 'none';
+    } else {
+      if (savedAddressSection) savedAddressSection.style.display = 'none';
+      if (newAddressSection) newAddressSection.style.display = 'block';
     }
   }
 
@@ -175,44 +259,58 @@ class CheckoutPage {
   }
 
   async handleConfirmOrder() {
-    const form = document.getElementById('shippingForm');
-
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
-
-    // Coletar dados do endereço
-    const formData = new FormData(form);
-    const addressParts = [];
-
-    addressParts.push(formData.get('street'));
-    addressParts.push(formData.get('number'));
-
-    const complement = formData.get('complement');
-    if (complement) addressParts.push(complement);
-
-    addressParts.push(formData.get('neighborhood'));
-    addressParts.push(formData.get('city'));
-    addressParts.push(formData.get('state'));
-    addressParts.push(formData.get('cep'));
-
-    const shippingAddress = addressParts.join(', ');
-
-    // Preparar items do pedido
-    const items = this.cart.map(item => ({
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.product.price
-    }));
-
     const confirmBtn = document.getElementById('confirmOrderBtn');
 
     try {
       confirmBtn.disabled = true;
       confirmBtn.textContent = 'Processando...';
 
-      const order = await createOrder(shippingAddress, items);
+      let addressId = null;
+
+      if (this.addressMode === 'select') {
+        // Usar endereço salvo
+        if (!this.selectedAddressId) {
+          this.showNotification('Selecione um endereço', 'error');
+          return;
+        }
+
+        addressId = this.selectedAddressId;
+      } else {
+        // Novo endereço - SEMPRE salvar
+        const form = document.getElementById('shippingForm');
+
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        const formData = new FormData(form);
+
+        // Salvar endereço (obrigatório agora)
+        const newAddress = await createAddress({
+          label: formData.get('addressLabel') || 'Endereço Principal',
+          street: formData.get('street'),
+          number: formData.get('number'),
+          complement: formData.get('complement') || null,
+          neighborhood: formData.get('neighborhood'),
+          city: formData.get('city'),
+          state: formData.get('state'),
+          zipcode: formData.get('cep'),
+          is_default: this.addresses.length === 0, // Primeiro endereço é padrão
+        });
+
+        addressId = newAddress.id;
+      }
+
+      // Preparar items do pedido
+      const items = this.cart.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.product.price
+      }));
+
+      // Criar pedido (addressId é obrigatório)
+      const order = await createOrder(items, addressId);
 
       this.showSuccessModal(order.id);
     } catch (error) {
@@ -224,6 +322,8 @@ class CheckoutPage {
         errorMessage = 'Produto sem estoque suficiente';
       } else if (error.message.includes('availability')) {
         errorMessage = 'Produto não disponível';
+      } else if (error.message.includes('Address')) {
+        errorMessage = 'Endereço é obrigatório';
       }
 
       this.showNotification(errorMessage, 'error');
